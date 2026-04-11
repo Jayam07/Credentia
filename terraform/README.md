@@ -97,14 +97,22 @@ Login: username = `admin`, password = output from above.
 ## 4. Install Gateway API + Envoy Gateway
 
 ```bash
-# Install Gateway API CRDs
-kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
+# Install Gateway API CRDs (must use --server-side to avoid ownership conflicts with Envoy Gateway)
+kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
 
-# Install Envoy Gateway via Helm
-helm install envoy-gateway oci://docker.io/envoyproxy/gateway-helm \
-  --version v1.3.0 \
+# Install Envoy Gateway via Helm (--skip-crds since Gateway API CRDs are already installed above)
+helm install eg oci://docker.io/envoyproxy/gateway-helm \
+  --version v1.2.6 \
   -n envoy-gateway-system \
-  --create-namespace
+  --create-namespace \
+  --skip-crds \
+  --wait
+
+# --skip-crds also skips Envoy Gateway extension CRDs (BackendTrafficPolicy etc.)
+# Install them separately, then restart the controller to pick them up
+helm pull oci://docker.io/envoyproxy/gateway-helm --version v1.2.6 --untar -d /tmp/eg-chart
+kubectl apply --server-side -f /tmp/eg-chart/gateway-helm/crds/generated/
+kubectl rollout restart deployment envoy-gateway -n envoy-gateway-system
 
 # Verify GatewayClass is registered
 kubectl get gatewayclass
@@ -120,26 +128,28 @@ helm repo add prometheus-community https://prometheus-community.github.io/helm-c
 helm repo update
 
 # Install kube-prometheus-stack
-helm install monitoring prometheus-community/kube-prometheus-stack \
+helm install kube-prometheus prometheus-community/kube-prometheus-stack \
   -n monitoring \
   --create-namespace \
   --set grafana.service.type=LoadBalancer \
-  --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false
+  --wait
 ```
 
 Access Grafana:
 
 ```bash
 # Get Grafana URL
-kubectl get svc monitoring-grafana -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+kubectl get svc kube-prometheus-grafana -n monitoring -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
 
-# Default credentials: admin / prom-operator
+# Get admin password
+kubectl get secret kube-prometheus-grafana -n monitoring -o jsonpath='{.data.admin-password}' | base64 -d; echo
+# Login: admin / <password from above>
 ```
 
 Access Prometheus (port-forward):
 
 ```bash
-kubectl port-forward svc/monitoring-kube-prometheus-prometheus 9090:9090 -n monitoring
+kubectl port-forward svc/kube-prometheus-kube-prome-prometheus 9090:9090 -n monitoring
 # Open http://localhost:9090
 ```
 

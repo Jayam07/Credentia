@@ -36,3 +36,25 @@ spec:
       backendRefs:
         - name: bankapp-service
           port: 8080
+---
+# Session persistence: Envoy Gateway bypasses K8s Service sessionAffinity and
+# load-balances directly to pod endpoints. Without this policy, requests from
+# the same browser can hit different pods, breaking in-memory sessions (CSRF
+# tokens, login state). Cookie-based consistent hashing pins a browser to one pod.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: bankapp-session
+  namespace: bankapp
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: bankapp-route
+  loadBalancer:
+    type: ConsistentHash
+    consistentHash:
+      type: Cookie
+      cookie:
+        name: BANKAPP_AFFINITY
+        ttl: 3600s
