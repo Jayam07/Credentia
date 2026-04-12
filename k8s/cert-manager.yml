@@ -9,7 +9,7 @@ metadata:
 spec:
   acme:
     server: https://acme-v02.api.letsencrypt.org/directory
-    email: admin@trainwithshubham.com
+    email: mentor@trainwithshubham.com
     privateKeySecretRef:
       name: letsencrypt-account-key
     solvers:
