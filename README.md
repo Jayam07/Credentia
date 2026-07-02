@@ -1,6 +1,6 @@
 <div align="center">
 
-# AI BankApp
+# Credentia
 
 ### End-to-End GitOps on Amazon EKS
 
@@ -155,6 +155,6 @@ Code Push → GitHub Actions → Build & Push to DockerHub → Update k8s manife
 
 <div align="center">
 
-**TrainWithShubham** — Happy Learning
+
 
 </div>
